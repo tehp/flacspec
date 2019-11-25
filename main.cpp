@@ -4,12 +4,9 @@
 #include <iostream>
 #include <valarray>
 #include <unistd.h>
+#include <math.h>
 #include <vector>
-
-#include "/usr/local/include/FLAC++/decoder.h"
-#include "/usr/local/include/FLAC++/encoder.h"
-#include "/usr/local/include/FLAC++/export.h"
-#include "/usr/local/include/FLAC++/metadata.h"
+#include <fstream>
 
 #include "lib/dr_flac.h"
 
@@ -23,8 +20,6 @@ const double PI = 3.141592653589793238460;
 typedef std::complex<double> Complex;
 typedef std::valarray<Complex> CArray;
 
-// Cooley–Tukey FFT (in-place, divide-and-conquer)
-// Higher memory requirements and redundancy although more intuitive
 void fft(CArray &x)
 {
     const size_t N = x.size();
@@ -53,11 +48,8 @@ void fft(CArray &x)
 
 int main()
 {
-    // libflac++
-    FLAC__StreamDecoder *fileDecoder;
-
     // dr_flac
-    drflac *pFlac = drflac_open_file("music/zeldas_theme.flac", NULL);
+    drflac *pFlac = drflac_open_file("music/classic.flac", NULL);
     if (pFlac == NULL)
     {
         std::cout << "read err: filename not found" << std::endl;
@@ -90,8 +82,6 @@ int main()
 
     double max_sample_double = 0.0;
     double min_sample_double = 0.0;
-
-    double max_found = 0;
 
     for (int i = 0; i < NUM_CHUNKS; i++)
     {
@@ -140,19 +130,17 @@ int main()
 
         std::cout << "fft iteration: " << i << "/" << NUM_CHUNKS << std::endl;
 
-        for (int i = 0; i < CHUNK_SIZE / 2; ++i)
-        {
-            double a = abs(data[i].real());
-            if (a > max_found)
-            {
-                max_found = a;
-            }
-        }
-
         // plug into spectrogram
-        for (int m = 0; m < NUM_LEVELS; m++)
+        for (int m = 0; m < NUM_LEVELS / 4; m++)
         {
-            spectrogram[i][m] = abs(data[m * (CHUNK_SIZE / NUM_LEVELS)].real()); // TODO: aggregate levels instead of skipping to fit screen
+            int32_t level_size = CHUNK_SIZE / NUM_LEVELS;
+            int32_t magnitude = 0;
+            for (int l = 0; l < level_size; l++)
+            {
+                magnitude += abs(data[(m * (CHUNK_SIZE / NUM_LEVELS)) + l].real());
+            }
+            spectrogram[i][m] = magnitude;
+            // pow(magnitude, 2);
         }
     }
 
@@ -169,6 +157,34 @@ int main()
     drflac_close(pFlac);
 
     std::cout << "file closed" << std::endl;
+
+    // make image
+    std::ofstream output;
+    output.open("output.ppm");
+    output << "P3\n";
+    output << NUM_CHUNKS << " " << NUM_LEVELS << "\n";
+    output << "255\n";
+
+    for (int i = 0; i < NUM_LEVELS; i++)
+    {
+        for (int j = 0; j < NUM_CHUNKS; j++)
+        {
+            int32_t color = spectrogram[NUM_CHUNKS - j][NUM_LEVELS - i];
+            int32_t r = 0;
+            int32_t g = 0;
+            int32_t b = 0;
+
+            if (color > 0)
+            {
+                r = 255;
+                g = 255;
+                b = 255;
+            }
+            output << r << " " << g << " " << b << "    ";
+        }
+        output << "\n";
+    }
+    output.close();
 
     return 0;
 }
