@@ -49,7 +49,7 @@ void fft(CArray &x)
 int main()
 {
     // dr_flac
-    drflac *pFlac = drflac_open_file("music/classic.flac", NULL);
+    drflac *pFlac = drflac_open_file("music/zeldas_theme.flac", NULL);
     if (pFlac == NULL)
     {
         std::cout << "read err: filename not found" << std::endl;
@@ -83,7 +83,7 @@ int main()
     double max_sample_double = 0.0;
     double min_sample_double = 0.0;
 
-    for (int i = 0; i < NUM_CHUNKS; i++)
+    for (int i = 0; i < NUM_CHUNKS * 2; i++)
     {
         std::vector<int32_t> samples_chunk;
         std::vector<double> samples_chunk_double;
@@ -128,20 +128,27 @@ int main()
 
         fft(data);
 
-        std::cout << "fft iteration: " << i << "/" << NUM_CHUNKS << std::endl;
+        std::cout << "fft iteration: " << i << "/" << NUM_CHUNKS * 2 << std::endl;
 
         // plug into spectrogram
-        for (int m = 0; m < NUM_LEVELS / 4; m++)
+        for (int m = 0; m < NUM_LEVELS; m++)
         {
-            int32_t level_size = CHUNK_SIZE / NUM_LEVELS;
-            int32_t magnitude = 0;
+            int32_t level_size = ((CHUNK_SIZE / NUM_LEVELS) / 4); // 4 is the magic number here, removes the second half ( / 2) and negative frequencies ( / 2) -> ( / 4)
+            
+            // level_size can not be < 1, will result in full black image
+            if (level_size < 1) {
+                level_size = 1;
+            }
+
+            // TODO: special coefficient for scaling number of samples per level on dramatically different length songs (can't use level_size)
+
+            double magnitude = 0;
             for (int l = 0; l < level_size; l++)
             {
-                magnitude += abs(data[(m * (CHUNK_SIZE / NUM_LEVELS)) + l].real());
-                magnitude += abs(data[(m * (CHUNK_SIZE / NUM_LEVELS)) - l].real());
+                magnitude += (abs(data[(m * (level_size)) + l].real()));
+                magnitude += (abs(data[(m * (level_size)) - l].real()));
             }
-            spectrogram[i][m] = magnitude;
-            // pow(magnitude, 2);
+            spectrogram[i / 2][m] = round(magnitude);
         }
     }
 
@@ -170,18 +177,48 @@ int main()
     {
         for (int j = 0; j < NUM_CHUNKS; j++)
         {
-            int32_t color = spectrogram[NUM_CHUNKS - j][NUM_LEVELS - i];
+            int32_t color = spectrogram[j][NUM_LEVELS - i];
             int32_t r = 0;
             int32_t g = 0;
             int32_t b = 0;
 
             if (color > 0)
             {
-                r = 255;
-                g = 255;
-                b = 255;
+                r = 233;
+                g = 62;
+                b = 58;
             }
-            output << r << " " << g << " " << b << "    ";
+            if (color > 2)
+            {
+                r = 237;
+                g = 104;
+                b = 60;
+            }
+            if (color > 5)
+            {
+                r = 243;
+                g = 144;
+                b = 63;
+            }
+            if (color > 10)
+            {
+                r = 253;
+                g = 199;
+                b = 12;
+            }
+            if (color > 20)
+            {
+                r = 255;
+                g = 243;
+                b = 59;
+            }
+            if (color > 50)
+            {
+                r = 255;
+                g = 251;
+                b = 195;
+            }
+            output << r << " " << g << " " << b << " ";
         }
         output << "\n";
     }
