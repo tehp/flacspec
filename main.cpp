@@ -138,6 +138,7 @@ int main()
             for (int l = 0; l < level_size; l++)
             {
                 magnitude += abs(data[(m * (CHUNK_SIZE / NUM_LEVELS)) + l].real());
+                magnitude += abs(data[(m * (CHUNK_SIZE / NUM_LEVELS)) - l].real());
             }
             spectrogram[i][m] = magnitude;
             // pow(magnitude, 2);
