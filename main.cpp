@@ -49,33 +49,22 @@ void fft(CArray &x)
 int main()
 {
     // dr_flac
-    drflac *pFlac = drflac_open_file("music/zeldas_theme.flac", NULL);
+    drflac *pFlac = drflac_open_file("music/classic.flac", NULL);
     if (pFlac == NULL)
     {
         std::cout << "read err: filename not found" << std::endl;
         return -1;
     }
 
+    // final image is stored here
     int32_t spectrogram[NUM_CHUNKS][NUM_LEVELS];
-
-    for (int i = 0; i < NUM_CHUNKS; i++)
-    {
-        for (int j = 0; j < NUM_LEVELS; j++)
-        {
-            spectrogram[i][j] = 0;
-        }
-    }
 
     int32_t *pSampleData = (int32_t *)malloc((size_t)pFlac->totalPCMFrameCount * pFlac->channels * sizeof(int32_t));
     drflac_read_pcm_frames_s32(pFlac, pFlac->totalPCMFrameCount, pSampleData);
 
     int32_t CHUNK_SIZE = pFlac->totalPCMFrameCount / NUM_CHUNKS;
 
-    std::cout << "num blocks: " << pFlac->totalPCMFrameCount / CHUNK_SIZE << std::endl;
-    std::cout << "num levels: " << NUM_LEVELS << std::endl;
-    std::cout << "num samples per chunk: " << CHUNK_SIZE << std::endl;
-
-    std::vector<int32_t> samples;
+    // std::vector<int32_t> samples;
 
     int32_t max_sample = 0;
     int32_t min_sample = 0;
@@ -85,17 +74,15 @@ int main()
 
     for (int i = 0; i < NUM_CHUNKS * 2; i++)
     {
-        std::vector<int32_t> samples_chunk;
-        std::vector<double> samples_chunk_double;
+        // std::vector<double> samples_chunk_double;
 
         Complex samples_complex[CHUNK_SIZE];
 
         for (int j = 0; j < CHUNK_SIZE; j++)
         {
             int32_t val = pSampleData[(i * CHUNK_SIZE) + j];
-            samples.push_back(val);
-            samples_chunk.push_back(val);
-            samples_chunk_double.push_back(val / (double)2147483647);
+            // samples.push_back(val);
+            // samples_chunk_double.push_back(val / (double)2147483647);
 
             double val_double = val / (double)2147483647;
 
@@ -134,9 +121,10 @@ int main()
         for (int m = 0; m < NUM_LEVELS; m++)
         {
             int32_t level_size = ((CHUNK_SIZE / NUM_LEVELS) / 4); // 4 is the magic number here, removes the second half ( / 2) and negative frequencies ( / 2) -> ( / 4)
-            
+
             // level_size can not be < 1, will result in full black image
-            if (level_size < 1) {
+            if (level_size < 1)
+            {
                 level_size = 1;
             }
 
@@ -157,10 +145,14 @@ int main()
     std::cout << "freq res: " << frequency_resolution << std::endl;
     std::cout << "chunk size: " << CHUNK_SIZE << std::endl;
 
-    std::cout << "num samples: " << samples.size() << std::endl;
+    // std::cout << "num samples: " << samples.size() << std::endl;
 
     std::cout << "min sample: " << min_sample << ", max sample: " << max_sample << std::endl;
     std::cout << "min sample double: " << min_sample_double << ", max sample double: " << max_sample_double << std::endl;
+
+    std::cout << "num blocks: " << pFlac->totalPCMFrameCount / CHUNK_SIZE << std::endl;
+    std::cout << "num levels: " << NUM_LEVELS << std::endl;
+    std::cout << "num samples per chunk: " << CHUNK_SIZE << std::endl;
 
     drflac_close(pFlac);
 
@@ -183,6 +175,12 @@ int main()
             int32_t b = 0;
 
             if (color > 0)
+            {
+                r = 180;
+                g = 62;
+                b = 58;
+            }
+            if (color > 1)
             {
                 r = 233;
                 g = 62;
@@ -217,6 +215,12 @@ int main()
                 r = 255;
                 g = 251;
                 b = 195;
+            }
+            if (color > 100)
+            {
+                r = 255;
+                g = 255;
+                b = 255;
             }
             output << r << " " << g << " " << b << " ";
         }
