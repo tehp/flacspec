@@ -3,6 +3,7 @@
 #include <complex>
 #include <iostream>
 #include <valarray>
+#include <string>
 #include <unistd.h>
 #include <math.h>
 #include <vector>
@@ -12,44 +13,41 @@
 
 #define SAMPLE_RATE 44100
 
-#define NUM_CHUNKS 1200
-#define NUM_LEVELS 600
+#define NUM_CHUNKS 1400
+#define NUM_LEVELS 800
 
-const double PI = 3.141592653589793238460;
+typedef std::complex<double> complex_val;
+typedef std::valarray<complex_val> complex_arr;
 
-typedef std::complex<double> Complex;
-typedef std::valarray<Complex> CArray;
-
-void fft(CArray &x)
+void transform(complex_arr &input)
 {
-    const size_t N = x.size();
+    double PI = 3.14159265358979323846;
 
-    if (N <= 1)
+    const size_t size = input.size();
+
+    if (size <= 1)
     {
         return;
     }
 
-    // divide
-    CArray even = x[std::slice(0, N / 2, 2)];
-    CArray odd = x[std::slice(1, N / 2, 2)];
+    complex_arr even = input[std::slice(0, size / 2, 2)];
+    transform(even);
 
-    // conquer
-    fft(even);
-    fft(odd);
+    complex_arr odd = input[std::slice(1, size / 2, 2)];
+    transform(odd);
 
-    // combine
-    for (size_t k = 0; k < N / 2; ++k)
+    for (size_t i = 0; i < size / 2; ++i)
     {
-        Complex t = std::polar(1.0, -2 * PI * k / N) * odd[k];
-        x[k] = even[k] + t;
-        x[k + N / 2] = even[k] - t;
+        complex_val t = std::polar(1.0, -2 * PI * i / size) * odd[i];
+        input[i] = even[i] + t;
+        input[i + size / 2] = even[i] - t;
     }
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-    // dr_flac
-    drflac *pFlac = drflac_open_file("music/classic.flac", NULL);
+    drflac *pFlac = drflac_open_file(argv[1], NULL);
+
     if (pFlac == NULL)
     {
         std::cout << "read err: filename not found" << std::endl;
@@ -64,8 +62,6 @@ int main()
 
     int32_t CHUNK_SIZE = pFlac->totalPCMFrameCount / NUM_CHUNKS;
 
-    // std::vector<int32_t> samples;
-
     int32_t max_sample = 0;
     int32_t min_sample = 0;
 
@@ -74,19 +70,16 @@ int main()
 
     for (int i = 0; i < NUM_CHUNKS * 2; i++)
     {
-        // std::vector<double> samples_chunk_double;
 
-        Complex samples_complex[CHUNK_SIZE];
+        complex_val samples_complex[CHUNK_SIZE];
 
         for (int j = 0; j < CHUNK_SIZE; j++)
         {
             int32_t val = pSampleData[(i * CHUNK_SIZE) + j];
-            // samples.push_back(val);
-            // samples_chunk_double.push_back(val / (double)2147483647);
 
             double val_double = val / (double)2147483647;
 
-            samples_complex[j] = Complex(val_double);
+            samples_complex[j] = complex_val(val_double);
 
             {
                 if (val > max_sample)
@@ -111,9 +104,9 @@ int main()
             }
         }
 
-        CArray data(samples_complex, CHUNK_SIZE);
+        complex_arr data(samples_complex, CHUNK_SIZE);
 
-        fft(data);
+        transform(data);
 
         std::cout << "fft iteration: " << i << "/" << NUM_CHUNKS * 2 << std::endl;
 
@@ -145,8 +138,6 @@ int main()
     std::cout << "freq res: " << frequency_resolution << std::endl;
     std::cout << "chunk size: " << CHUNK_SIZE << std::endl;
 
-    // std::cout << "num samples: " << samples.size() << std::endl;
-
     std::cout << "min sample: " << min_sample << ", max sample: " << max_sample << std::endl;
     std::cout << "min sample double: " << min_sample_double << ", max sample double: " << max_sample_double << std::endl;
 
@@ -173,59 +164,61 @@ int main()
             int32_t r = 0;
             int32_t g = 0;
             int32_t b = 0;
-
-            if (color > 0)
             {
-                r = 180;
-                g = 62;
-                b = 58;
-            }
-            if (color > 1)
-            {
-                r = 233;
-                g = 62;
-                b = 58;
-            }
-            if (color > 2)
-            {
-                r = 237;
-                g = 104;
-                b = 60;
-            }
-            if (color > 5)
-            {
-                r = 243;
-                g = 144;
-                b = 63;
-            }
-            if (color > 10)
-            {
-                r = 253;
-                g = 199;
-                b = 12;
-            }
-            if (color > 20)
-            {
-                r = 255;
-                g = 243;
-                b = 59;
-            }
-            if (color > 50)
-            {
-                r = 255;
-                g = 251;
-                b = 195;
-            }
-            if (color > 100)
-            {
-                r = 255;
-                g = 255;
-                b = 255;
+                if (color > 0)
+                {
+                    r = 180;
+                    g = 62;
+                    b = 58;
+                }
+                if (color > 1)
+                {
+                    r = 233;
+                    g = 62;
+                    b = 58;
+                }
+                if (color > 2)
+                {
+                    r = 237;
+                    g = 104;
+                    b = 60;
+                }
+                if (color > 5)
+                {
+                    r = 243;
+                    g = 144;
+                    b = 63;
+                }
+                if (color > 10)
+                {
+                    r = 253;
+                    g = 199;
+                    b = 12;
+                }
+                if (color > 20)
+                {
+                    r = 255;
+                    g = 243;
+                    b = 59;
+                }
+                if (color > 50)
+                {
+                    r = 255;
+                    g = 251;
+                    b = 195;
+                }
+                if (color > 100)
+                {
+                    r = 255;
+                    g = 255;
+                    b = 255;
+                }
             }
             output << r << " " << g << " " << b << " ";
         }
         output << "\n";
     }
+
     output.close();
 
     return 0;
